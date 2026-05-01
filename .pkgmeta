@@ -1,10 +1,5 @@
 package-as: AccountStatistics
 
-# Hardcode the CurseForge project ID so the packager doesn't have to auto-detect
-# it from the project's Source URL (auto-detection misses projects that haven't
-# been approved yet).
-curse-id: 1530942
-
 # Files/dirs to omit from the published zip.
 ignore:
   - .github
