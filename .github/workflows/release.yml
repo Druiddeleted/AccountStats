@@ -17,7 +17,7 @@ on:
       release_type:
         description: 'CurseForge release type'
         required: true
-        default: 'release'
+        default: 'alpha'
         type: choice
         options:
           - alpha
