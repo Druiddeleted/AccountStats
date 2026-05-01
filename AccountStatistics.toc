@@ -5,7 +5,8 @@
 ## Version: 0.1.0
 ## SavedVariables: AccountStatisticsDB
 
-core.lua
-ui.lua
-options.lua
-export.lua
+src\core.lua
+src\resolver.lua
+src\ui.lua
+src\options.lua
+src\export.lua

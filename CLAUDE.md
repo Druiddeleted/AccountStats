@@ -8,28 +8,39 @@ Adds an Account tab to the Achievements window that shows statistics summed acro
 
 ## File layout
 
-- `core.lua` — slash commands, event registration, `ScrapeStats` (async coroutine), debounced scrape scheduler.
-- `ui.lua` — Account tab creation, ScrollBox row rewrite hook, `SummedStatistic` (memoized), sibling-stat resolution for "the most"-style stats, account-mode toggle, ElvUI tab skin integration.
-- `options.lua` — Settings panel (registered via `Settings.RegisterCanvasLayoutCategory`) with realm/character disable checkboxes plus a debug-logging toggle.
-- `export.lua` — `/as export` window that emits a CSV of every stat × character.
+All Lua source lives under `src/`. The top-level addon directory holds only metadata (`.toc`, `.pkgmeta`, `LICENSE`, `README.md`, `CHANGELOG.md`, `CLAUDE.md`, `.github/`).
+
+- `src/core.lua` — slash commands, event registration, `ScrapeStats` (async coroutine), debounced scrape scheduler.
+- `src/resolver.lua` — value parsers (money/numeric/labeled), category map + sibling lookup, max-style detection, `SummedStatistic` with strategy-based resolution (memoized), `PrimeCachesAsync`, per-character leader resolution. **All non-UI logic for turning a stat ID into a display string lives here.**
+- `src/ui.lua` — Account tab creation, ElvUI skin integration, ScrollBox row rewrite hook, account-mode toggle, per-row breakdown tooltip. Calls into `resolver.lua` via `AS.SummedStatistic`, `AS.FormatPerCharValue`, `AS.IsCharDisabled`.
+- `src/options.lua` — Settings panel (registered via `Settings.RegisterCanvasLayoutCategory`) with realm/character disable checkboxes plus a debug-logging toggle.
+- `src/export.lua` — `/as export` window that emits a CSV of every stat × character.
+
+`.toc` load order: `core` → `resolver` → `ui` → `options` → `export`. Resolver must load before `ui` (which calls `AS.SummedStatistic`).
 
 ## Releasing a new version
 
-This addon is published to CurseForge as **Account Statistics**, project owned by `Druiddeleted`. GitHub: `Druiddeleted/AccountStats`. Tagging `x.y.z` triggers the GitHub Action (`.github/workflows/release.yml`) which uses BigWigs packager to upload to CurseForge.
+CurseForge: **Account Statistics**, project owned by `Druiddeleted`, project ID `1530942`. GitHub: `Druiddeleted/AccountStats`.
 
-Before tagging:
+The GitHub Action (`.github/workflows/release.yml`) handles two flows:
+
+- **Tag push** (`git push origin x.y.z`): auto-builds and uploads as **alpha** to CurseForge.
+- **Manual dispatch** (Actions tab → "Release" → "Run workflow"): pick a tag and a release type (`alpha` / `beta` / `release`). Used to **promote** a previously-tagged alpha to release once it's tested.
+
+To cut a new version:
 
 1. Bump `## Version: x.y.z` in `AccountStatistics.toc`.
-2. Add a `## x.y.z` section at the top of `CHANGELOG.md` summarizing changes since the last tag (look at `git log <previous-tag>..HEAD` for the list).
-3. Commit (e.g. `git commit -am "Release x.y.z"`).
-4. Tag + push:
+2. Add a `## x.y.z` section at the top of `CHANGELOG.md` summarizing changes since the last tag (use `git log <prev-tag>..HEAD` for the list).
+3. Commit and tag:
    ```bash
+   git commit -am "Release x.y.z"
    git tag x.y.z
    git push && git push origin x.y.z
    ```
-5. Confirm the Actions run succeeds and the new file appears on CurseForge.
+4. The push triggers an alpha upload. Verify on CurseForge.
+5. After testing, promote: Actions tab → Release → Run workflow → enter the tag, pick `release`. That re-runs the packager against the same tag and uploads as a Release file.
 
-If the upload fails, the most likely causes are: missing `CF_API_KEY` repo secret, unset Source URL on the CurseForge project page, or the tag not matching the workflow trigger pattern (`v*` or `[0-9]*`).
+If a workflow run fails, the usual culprits are: missing `CF_API_KEY` secret, the project ID in the workflow getting out of sync, or the tag not matching the trigger pattern (`v*` or `[0-9]*`).
 
 ## Versioning conventions
 

@@ -1,10 +1,28 @@
 name: Release
 
+# Tag pushes auto-build an alpha. Promote a tag to beta or release by manually
+# dispatching this workflow from the Actions tab and picking the tag + release
+# type.
 on:
   push:
     tags:
       - 'v*'
       - '[0-9]*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to package (e.g. 0.1.0). Required for manual runs.'
+        required: true
+        type: string
+      release_type:
+        description: 'CurseForge release type'
+        required: true
+        default: 'release'
+        type: choice
+        options:
+          - alpha
+          - beta
+          - release
 
 permissions:
   contents: write
@@ -16,12 +34,26 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
           fetch-depth: 0
+
+      - name: Compute packager flags
+        id: flags
+        run: |
+          # Tag pushes default to alpha; manual runs use the user's chosen type.
+          TYPE="${{ github.event.inputs.release_type || 'alpha' }}"
+          case "$TYPE" in
+            alpha)   echo "args=-p 1530942 -a" >> "$GITHUB_OUTPUT" ;;
+            beta)    echo "args=-p 1530942 -b" >> "$GITHUB_OUTPUT" ;;
+            release) echo "args=-p 1530942" >> "$GITHUB_OUTPUT" ;;
+            *) echo "Unknown release type: $TYPE" >&2; exit 1 ;;
+          esac
+          echo "Selected: $TYPE"
 
       - name: Package & upload
         uses: BigWigsMods/packager@v2
         with:
-          args: -p 1530942
+          args: ${{ steps.flags.outputs.args }}
         env:
           CF_API_KEY: ${{ secrets.CF_API_KEY }}
           GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}
