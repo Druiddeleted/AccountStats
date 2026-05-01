@@ -1,0 +1,18 @@
+package-as: AccountStatistics
+
+# Files/dirs to omit from the published zip.
+ignore:
+  - .github
+  - .gitignore
+  - .pkgmeta
+  - LICENSE.md
+  - README.md
+  - "*.psd"
+  - "*.xcf"
+
+# Generate a changelog from git history if no CHANGELOG.md is present.
+manual-changelog: CHANGELOG.md
+
+# CurseForge project metadata is set via secrets (CF_API_KEY) and the project's
+# slug/id, which the packager auto-detects from the git origin URL after you set
+# the CurseForge project's "GitHub repository" link in CF project settings.

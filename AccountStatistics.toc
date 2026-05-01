@@ -1,0 +1,11 @@
+## Interface: 120005
+## Title: Account Statistics
+## Notes: Adds an Account tab to the Achievements window with statistics summed across every character on the account.
+## Author: Druiddeleted
+## Version: 0.1.0
+## SavedVariables: AccountStatisticsDB
+
+core.lua
+ui.lua
+options.lua
+export.lua
