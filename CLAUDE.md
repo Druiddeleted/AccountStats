@@ -22,10 +22,11 @@ All Lua source lives under `src/`. The top-level addon directory holds only meta
 
 CurseForge: **Account Statistics**, project owned by `Druiddeleted`, project ID `1530942`. GitHub: `Druiddeleted/AccountStats`.
 
-The GitHub Action (`.github/workflows/release.yml`) handles two flows:
+The GitHub Action (`.github/workflows/release.yml`) hands off to BigWigs packager. The CurseForge channel is picked from the tag's GitHub Release status:
 
-- **Tag push** (`git push origin x.y.z`): auto-builds and uploads as **alpha** to CurseForge.
-- **Manual dispatch** (Actions tab → "Release" → "Run workflow"): pick a tag and a release type (`alpha` / `beta` / `release`). Used to **promote** a previously-tagged alpha to release once it's tested.
+- Tag with no GitHub Release → **alpha**
+- Tag with a GitHub Release marked prerelease → **beta**
+- Tag with a full GitHub Release → **release**
 
 To cut a new version:
 
@@ -38,7 +39,7 @@ To cut a new version:
    git push && git push origin x.y.z
    ```
 4. The push triggers an alpha upload. Verify on CurseForge.
-5. After testing, promote: Actions tab → Release → Run workflow → enter the tag, pick `release`. That re-runs the packager against the same tag and uploads as a Release file.
+5. To promote: create a GitHub Release for the tag (prerelease for beta, full release for release), then Actions tab → Release → Run workflow → enter the same tag. The packager re-runs and re-uploads with the new channel.
 
 If a workflow run fails, the usual culprits are: missing `CF_API_KEY` secret, the project ID in the workflow getting out of sync, or the tag not matching the trigger pattern (`v*` or `[0-9]*`).
 
