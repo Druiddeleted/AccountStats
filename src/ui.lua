@@ -12,6 +12,29 @@ local AS = AccountStatistics
 local accountMode = false
 
 --------------------------------------------------------------------------------
+-- Breakdown tooltip
+--------------------------------------------------------------------------------
+
+-- Use a dedicated, addon-owned tooltip rather than the shared global
+-- GameTooltip. Driving the shared tooltip from our (tainted) OnEnter handler
+-- leaves taint on its internal widget/layout state, which later spreads into
+-- Blizzard code that reuses GameTooltip (e.g. World Map AreaPOI pins). Under
+-- Midnight's Secret Values, that tainted execution then throws when Blizzard's
+-- widget layout compares secret numbers ("attempt to compare a secret number
+-- value (execution tainted by 'AccountStatistics')"). Our own tooltip keeps the
+-- taint contained and only ever renders plain strings, so it never touches a
+-- secret value itself.
+local _tooltip
+local function AcquireTooltip()
+    if not _tooltip then
+        _tooltip = CreateFrame(
+            "GameTooltip", "AccountStatisticsTooltip", UIParent, "GameTooltipTemplate"
+        )
+    end
+    return _tooltip
+end
+
+--------------------------------------------------------------------------------
 -- ScrollBox row rewrite
 --------------------------------------------------------------------------------
 
@@ -23,9 +46,10 @@ local function ShowAccountBreakdownTooltip(row)
     local title = (row.Title and row.Title:GetText())
         or (row.Text and row.Text:GetText())
         or "Statistic"
-    GameTooltip:SetOwner(row, "ANCHOR_RIGHT")
-    GameTooltip:SetText(title, 1, 1, 1)
-    GameTooltip:AddLine("Per-character leader", 0.7, 0.7, 0.7)
+    local tooltip = AcquireTooltip()
+    tooltip:SetOwner(row, "ANCHOR_RIGHT")
+    tooltip:SetText(title, 1, 1, 1)
+    tooltip:AddLine("Per-character leader", 0.7, 0.7, 0.7)
 
     local chars = (AccountStatisticsDB and AccountStatisticsDB.characters) or {}
     local keys = {}
@@ -35,16 +59,16 @@ local function ShowAccountBreakdownTooltip(row)
         local raw = chars[k].stats and chars[k].stats[id] or "--"
         local display = AS.FormatPerCharValue(raw, chars[k].stats, id)
         if AS.IsCharDisabled(k) then
-            GameTooltip:AddDoubleLine(k .. " (disabled)", display, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5)
+            tooltip:AddDoubleLine(k .. " (disabled)", display, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5)
         else
-            GameTooltip:AddDoubleLine(k, display, 0.9, 0.9, 0.9, 1, 1, 1)
+            tooltip:AddDoubleLine(k, display, 0.9, 0.9, 0.9, 1, 1, 1)
         end
     end
-    GameTooltip:Show()
+    tooltip:Show()
 end
 
 local function HideAccountBreakdownTooltip()
-    GameTooltip:Hide()
+    if _tooltip then _tooltip:Hide() end
 end
 
 -- Walk every visible stat-row and set its value text based on the current mode.

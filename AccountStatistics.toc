@@ -2,7 +2,7 @@
 ## Title: Account Statistics
 ## Notes: Adds an Account tab to the Achievements window with statistics summed across every character on the account.
 ## Author: Druiddeleted
-## Version: 0.1.0
+## Version: 0.1.1
 ## SavedVariables: AccountStatisticsDB
 
 src\core.lua

@@ -22,24 +22,25 @@ All Lua source lives under `src/`. The top-level addon directory holds only meta
 
 CurseForge: **Account Statistics**, project owned by `Druiddeleted`, project ID `1530942`. GitHub: `Druiddeleted/AccountStats`.
 
-The GitHub Action (`.github/workflows/release.yml`) hands off to BigWigs packager. The CurseForge channel is picked from the tag's GitHub Release status:
+The GitHub Action (`.github/workflows/release.yml`) hands off to BigWigs packager. The CurseForge channel is picked from the **tag name** (release.sh L826–839):
 
-- Tag with no GitHub Release → **alpha**
-- Tag with a GitHub Release marked prerelease → **beta**
-- Tag with a full GitHub Release → **release**
+- Tag name contains `alpha` → **alpha**
+- Tag name contains `beta`  → **beta**
+- Anything else            → **release**
+
+So iterate with `x.y.z-alphaN`, then drop the suffix to ship.
 
 To cut a new version:
 
-1. Bump `## Version: x.y.z` in `AccountStatistics.toc`.
-2. Add a `## x.y.z` section at the top of `CHANGELOG.md` summarizing changes since the last tag (use `git log <prev-tag>..HEAD` for the list).
+1. Bump `## Version` in `AccountStatistics.toc` to match the tag you'll create.
+2. Add a matching section at the top of `CHANGELOG.md` summarizing changes since the last tag (use `git log <prev-tag>..HEAD` for the list).
 3. Commit and tag:
    ```bash
-   git commit -am "Release x.y.z"
-   git tag x.y.z
-   git push && git push origin x.y.z
+   git commit -am "Release x.y.z-alpha1"
+   git tag x.y.z-alpha1   # or x.y.z for a release
+   git push && git push origin x.y.z-alpha1
    ```
-4. The push triggers an alpha upload. Verify on CurseForge.
-5. To promote: create a GitHub Release for the tag (prerelease for beta, full release for release), then Actions tab → Release → Run workflow → enter the same tag. The packager re-runs and re-uploads with the new channel.
+4. Watch the Actions tab to confirm the upload landed in the right CF channel.
 
 If a workflow run fails, the usual culprits are: missing `CF_API_KEY` secret, the project ID in the workflow getting out of sync, or the tag not matching the trigger pattern (`v*` or `[0-9]*`).
 
