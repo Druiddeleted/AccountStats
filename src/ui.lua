@@ -51,7 +51,7 @@ local function ShowAccountBreakdownTooltip(row)
     tooltip:SetText(title, 1, 1, 1)
     tooltip:AddLine("Per-character leader", 0.7, 0.7, 0.7)
 
-    local chars = (AccountStatisticsDB and AccountStatisticsDB.characters) or {}
+    local chars = AS.DB.Characters()
     local keys = {}
     for k in pairs(chars) do table.insert(keys, k) end
     table.sort(keys)

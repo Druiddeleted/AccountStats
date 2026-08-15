@@ -5,6 +5,8 @@
 ## Version: 0.1.1
 ## SavedVariables: AccountStatisticsDB
 
+src\async.lua
+src\db.lua
 src\core.lua
 src\resolver.lua
 src\ui.lua

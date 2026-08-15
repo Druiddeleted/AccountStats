@@ -4,7 +4,7 @@ AccountStatistics = AccountStatistics or {}
 local AS = AccountStatistics
 
 function AS.Log(fmt, ...)
-    if not (AccountStatisticsDB and AccountStatisticsDB.debug) then return end
+    if not AS.DB.Debug() then return end
     local msg = (select("#", ...) > 0) and fmt:format(...) or fmt
     print("|cff33ff99[AS]|r " .. msg)
 end
@@ -39,11 +39,8 @@ AS.GetAllStatIDs = GetAllStatIDs
 -- to the runner whenever the per-frame budget is exhausted, so the scrape no
 -- longer freezes the game while iterating hundreds of API calls.
 local function DoScrape(yieldFn)
-    if not AccountStatisticsDB then return end
-    AccountStatisticsDB.characters = AccountStatisticsDB.characters or {}
-
     local key = CharKey()
-    local entry = AccountStatisticsDB.characters[key] or {}
+    local entry = AS.DB.Character(key) or {}
     local startTime = debugprofilestop and debugprofilestop() or 0
     entry.class = select(2, UnitClass("player"))
     entry.classLocalized = UnitClass("player")
@@ -65,7 +62,7 @@ local function DoScrape(yieldFn)
     end
 
     entry.stats = newStats
-    AccountStatisticsDB.characters[key] = entry
+    AS.DB.SetCharacter(key, entry)
     -- Don't invalidate the SummedStatistic cache here; the rendering cost is much
     -- higher than the staleness cost. Manual /as scrape and option toggles still
     -- invalidate.
@@ -86,47 +83,17 @@ function AS.ScrapeStatsSync()
 end
 
 -- Async path: budget ~4ms of work per frame and resume on the next OnUpdate.
-local _scrapeCo = nil
-local _scrapeRunner = nil
-
-local function MakeBudgetedYielder(budgetMs)
-    if not debugprofilestop then return nil end
-    local lastYield = debugprofilestop()
-    return function()
-        if debugprofilestop() - lastYield > budgetMs then
-            coroutine.yield()
-            lastYield = debugprofilestop()
-        end
-    end
-end
-
+-- The coroutine/runner/error plumbing lives in async.lua (see AS.RunBudgeted).
 function AS.ScrapeStats()
-    if _scrapeCo then return end  -- already in progress
+    if AS.IsRunning("ScrapeStats") then return end  -- already in progress
     AS._eventsSinceLastScrape = 0
-    _scrapeCo = coroutine.create(function()
-        DoScrape(MakeBudgetedYielder(4))
-    end)
-    if not _scrapeRunner then _scrapeRunner = CreateFrame("Frame") end
-    _scrapeRunner:SetScript("OnUpdate", function(self)
-        if not _scrapeCo then self:SetScript("OnUpdate", nil); return end
-        local ok, err = coroutine.resume(_scrapeCo)
-        if not ok then
-            AS.Log("ScrapeStats error: %s", tostring(err))
-            _scrapeCo = nil
-            self:SetScript("OnUpdate", nil)
-            return
-        end
-        if coroutine.status(_scrapeCo) == "dead" then
-            _scrapeCo = nil
-            self:SetScript("OnUpdate", nil)
-        end
-    end)
+    AS.RunBudgeted("ScrapeStats", function(yield)
+        DoScrape(yield)
+    end, 4)
 end
 
 function AS.WipeCharacter(key)
-    if AccountStatisticsDB and AccountStatisticsDB.characters then
-        AccountStatisticsDB.characters[key] = nil
-    end
+    AS.DB.RemoveCharacter(key)
 end
 
 -- Debounced scrape so a flurry of events (turn-in chains, encounter wraps) only
@@ -168,8 +135,7 @@ for _, ev in ipairs(SCRAPE_EVENTS) do f:RegisterEvent(ev) end
 f:SetScript("OnEvent", function(_, event, arg1)
     if event == "ADDON_LOADED" then
         if arg1 == ADDON_NAME then
-            AccountStatisticsDB = AccountStatisticsDB or { characters = {} }
-            AccountStatisticsDB.characters = AccountStatisticsDB.characters or {}
+            AS.DB.Init()
         end
         -- Other addons loading (Blizzard_AchievementUI, etc.) shouldn't trigger a
         -- scrape -- they fire ADDON_LOADED constantly during a session.
@@ -211,7 +177,7 @@ SlashCmdList.ACCOUNTSTATS = function(msg)
         AS.WipeCharacter(key)
         print("|cff33ff99AccountStatistics|r: forgot " .. key)
     elseif msg == "list" then
-        for k, c in pairs(AccountStatisticsDB.characters) do
+        for k, c in pairs(AS.DB.Characters()) do
             local n = 0
             for _ in pairs(c.stats or {}) do n = n + 1 end
             print(("  %s  (lvl %s %s, %d stats, updated %s)"):format(k, c.level or "?", c.class or "?", n, date("%Y-%m-%d %H:%M", c.lastUpdate or 0)))
@@ -220,15 +186,14 @@ SlashCmdList.ACCOUNTSTATS = function(msg)
         local id = tonumber(msg:sub(6))
         if not id then print("|cff33ff99AccountStatistics|r: usage /as stat <statID>") return end
         print(("|cff33ff99AccountStatistics|r stat %d:"):format(id))
-        for k, c in pairs(AccountStatisticsDB.characters or {}) do
+        for k, c in pairs(AS.DB.Characters()) do
             print(("  %s = %s"):format(k, tostring(c.stats and c.stats[id])))
         end
         print(("  GetStatistic(current) = %s"):format(tostring(GetStatistic(id))))
     elseif msg == "" or msg == "options" or msg == "config" then
         if AS.OpenOptions then AS.OpenOptions() end
     elseif msg == "debug" then
-        AccountStatisticsDB.debug = not AccountStatisticsDB.debug
-        print(("|cff33ff99AccountStatistics|r debug = %s"):format(tostring(AccountStatisticsDB.debug)))
+        print(("|cff33ff99AccountStatistics|r debug = %s"):format(tostring(AS.DB.ToggleDebug())))
     elseif msg == "export" or msg == "csv" then
         if AS.ShowExport then AS.ShowExport() end
     elseif msg == "help" then

@@ -21,8 +21,7 @@ local debugLabel = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
 debugLabel:SetPoint("LEFT", debugCB, "RIGHT", 4, 1)
 debugLabel:SetText("Print debug log messages to chat")
 debugCB:SetScript("OnClick", function(self)
-    AccountStatisticsDB = AccountStatisticsDB or {}
-    AccountStatisticsDB.debug = self:GetChecked() or nil
+    AS.DB.SetDebug(self:GetChecked())
 end)
 
 local charsHeader = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
@@ -56,7 +55,7 @@ end
 
 local function CharsByRealm()
     local map = {}
-    for key, c in pairs(AccountStatisticsDB.characters or {}) do
+    for key, c in pairs(AS.DB.Characters()) do
         local realm = AS.RealmFromKey(key)
         map[realm] = map[realm] or {}
         table.insert(map[realm], { key = key, char = c })
@@ -68,11 +67,8 @@ local function CharsByRealm()
 end
 
 local function Refresh()
-    AccountStatisticsDB = AccountStatisticsDB or {}
-    AccountStatisticsDB.characters = AccountStatisticsDB.characters or {}
-    AccountStatisticsDB.disabledChars = AccountStatisticsDB.disabledChars or {}
-    AccountStatisticsDB.disabledRealms = AccountStatisticsDB.disabledRealms or {}
-    debugCB:SetChecked(AccountStatisticsDB.debug == true)
+    AS.DB.Init()
+    debugCB:SetChecked(AS.DB.Debug())
 
     -- Hide all existing widgets; we re-show what's needed below.
     for _, rf in pairs(realmFrames) do
@@ -119,14 +115,9 @@ local function Refresh()
 
         local list = byRealm[realm]
         rf.label:SetText(("%s  |cff888888(%d %s)|r"):format(realm, #list, #list == 1 and "char" or "chars"))
-        rf.check:SetChecked(not AccountStatisticsDB.disabledRealms[realm])
+        rf.check:SetChecked(not AS.DB.IsRealmDisabled(realm))
         rf.check:SetScript("OnClick", function(self)
-            if self:GetChecked() then
-                AccountStatisticsDB.disabledRealms[realm] = nil
-            else
-                AccountStatisticsDB.disabledRealms[realm] = true
-            end
-            if AS.InvalidateSummed then AS.InvalidateSummed() end
+            AS.DB.SetRealmEnabled(realm, self:GetChecked())
             Refresh()
         end)
 
@@ -185,15 +176,10 @@ local function Refresh()
                 row.name:SetText(nameOnly)
                 row.race:SetText(c.raceLocalized or c.race or "?")
                 row.level:SetText("Lvl " .. tostring(c.level or "?"))
-                row.check:SetChecked(not AccountStatisticsDB.disabledChars[key])
-                row.check:SetEnabled(not AccountStatisticsDB.disabledRealms[realm])
+                row.check:SetChecked(not AS.DB.IsCharDisabled(key))
+                row.check:SetEnabled(not AS.DB.IsRealmDisabled(realm))
                 row.check:SetScript("OnClick", function(self)
-                    if self:GetChecked() then
-                        AccountStatisticsDB.disabledChars[key] = nil
-                    else
-                        AccountStatisticsDB.disabledChars[key] = true
-                    end
-                    if AS.InvalidateSummed then AS.InvalidateSummed() end
+                    AS.DB.SetCharEnabled(key, self:GetChecked())
                 end)
 
                 y = y + ROW_H

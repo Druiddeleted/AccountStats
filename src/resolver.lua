@@ -35,21 +35,8 @@ local TEXTURE_MARKER  = "|T"           -- start of inline icons in money/value s
 -- Character / realm enable predicates
 --------------------------------------------------------------------------------
 
-local function RealmFromKey(key)
-    return key and key:match("^([^-]+)") or "?"
-end
-
-local function IsCharDisabled(key)
-    if not AccountStatisticsDB then return false end
-    if AccountStatisticsDB.disabledChars and AccountStatisticsDB.disabledChars[key] then
-        return true
-    end
-    if AccountStatisticsDB.disabledRealms
-        and AccountStatisticsDB.disabledRealms[RealmFromKey(key)] then
-        return true
-    end
-    return false
-end
+local RealmFromKey = AS.DB.RealmFromKey
+local IsCharDisabled = AS.DB.IsCharDisabled
 
 AS.RealmFromKey   = RealmFromKey
 AS.IsCharDisabled = IsCharDisabled
@@ -248,7 +235,7 @@ end
 --------------------------------------------------------------------------------
 
 local function ClassifyValues(id)
-    local chars = AccountStatisticsDB and AccountStatisticsDB.characters or {}
+    local chars = AS.DB.Characters()
     local out = {
         chars       = chars,
         byLabel     = {},   -- label -> total of per-char "the most" counts
@@ -470,7 +457,7 @@ end
 --------------------------------------------------------------------------------
 
 local function SummedStatisticUncached(id)
-    local chars = AccountStatisticsDB and AccountStatisticsDB.characters
+    local chars = AS.DB.Characters()
     if not chars then return "--" end
     local classified = ClassifyValues(id)
     if IsMaxStyleStatistic(id) then
@@ -567,23 +554,9 @@ end
 -- doesn't freeze the game.
 --------------------------------------------------------------------------------
 
-local function MakeBudgetedYielder(budgetMs)
-    if not debugprofilestop then return function() end end
-    local lastYield = debugprofilestop()
-    return function()
-        if debugprofilestop() - lastYield > budgetMs then
-            coroutine.yield()
-            lastYield = debugprofilestop()
-        end
-    end
-end
-
-local _primeCo, _primeRunner = nil, nil
-
 function AS.PrimeCachesAsync()
-    if _primeCo then return end
-    _primeCo = coroutine.create(function()
-        local yielder = MakeBudgetedYielder(4)
+    if AS.IsRunning("PrimeCaches") then return end
+    AS.RunBudgeted("PrimeCaches", function(yielder)
 
         -- Phase 1: build category map incrementally with yields per stat.
         if not _catMap then
@@ -613,20 +586,5 @@ function AS.PrimeCachesAsync()
         end
 
         if AS.Log then AS.Log("cache priming complete") end
-    end)
-    if not _primeRunner then _primeRunner = CreateFrame("Frame") end
-    _primeRunner:SetScript("OnUpdate", function(self)
-        if not _primeCo then self:SetScript("OnUpdate", nil); return end
-        local ok, err = coroutine.resume(_primeCo)
-        if not ok then
-            if AS.Log then AS.Log("prime error: %s", tostring(err)) end
-            _primeCo = nil
-            self:SetScript("OnUpdate", nil)
-            return
-        end
-        if coroutine.status(_primeCo) == "dead" then
-            _primeCo = nil
-            self:SetScript("OnUpdate", nil)
-        end
-    end)
+    end, 4)
 end

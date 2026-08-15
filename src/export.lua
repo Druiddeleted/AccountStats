@@ -4,16 +4,13 @@ local AS = AccountStatistics
 local frame
 
 local function BuildCSV()
-    AccountStatisticsDB = AccountStatisticsDB or {}
-    AccountStatisticsDB.characters = AccountStatisticsDB.characters or {}
-
     local chars = {}
-    for k in pairs(AccountStatisticsDB.characters) do table.insert(chars, k) end
+    for k in pairs(AS.DB.Characters()) do table.insert(chars, k) end
     table.sort(chars)
 
     -- Collect every stat id seen across the account.
     local idSet = {}
-    for _, c in pairs(AccountStatisticsDB.characters) do
+    for _, c in pairs(AS.DB.Characters()) do
         for id in pairs(c.stats or {}) do idSet[id] = true end
     end
     local ids = {}
@@ -47,7 +44,7 @@ local function BuildCSV()
     for _, id in ipairs(ids) do
         local row = { tostring(id), csvCell(NameFor(id)) }
         for _, k in ipairs(chars) do
-            local c = AccountStatisticsDB.characters[k]
+            local c = AS.DB.Character(k)
             local v = c.stats and c.stats[id]
             -- Strip texture markers from money so the CSV stays readable.
             if type(v) == "string" and v:find("|T", 1, true) then
