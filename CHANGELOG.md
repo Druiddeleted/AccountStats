@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.2-alpha1
+
+- Internal restructure, no intended change in behaviour. SavedVariables now has a single owner: every read and write goes through one module instead of five modules poking the global across ~40 sites. The rule that toggling a character or realm has to invalidate the account-sum cache — previously copy-pasted at three call sites — now lives inside the toggle itself, so it can't be forgotten, and the matching rule that a routine stat scrape must *not* invalidate it (that recompute is expensive enough to feel) is enforced in the same place.
+- Internal: the stat scrape and the cache priming shared no code despite doing the same thing — each carried its own copy of the frame-budgeted coroutine plumbing, and the two copies had drifted apart. Both now use one scheduler.
+- Worth watching in this alpha: that realm/character checkboxes still take effect immediately, and that the first click on a "the most"-style statistic category is still smooth rather than hitching.
+
 ## 0.1.1
 
 - Fixed a taint error ("attempt to compare a secret number value (execution tainted by 'AccountStatistics')") that could surface elsewhere in the UI — most visibly on the World Map — after hovering the account breakdown tooltip. The breakdown tooltip now uses a dedicated, addon-owned tooltip frame instead of the shared `GameTooltip`, keeping our taint from spreading into Blizzard's Secret Values.
