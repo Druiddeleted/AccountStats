@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.2-alpha2
+
+- Now targets the current client (12.1.0). The interface number still said 12.0.5, so the addon showed as out of date in the in-game list and was published against the wrong game version on CurseForge. No functional change.
+
 ## 0.1.2-alpha1
 
 - Internal restructure, no intended change in behaviour. SavedVariables now has a single owner: every read and write goes through one module instead of five modules poking the global across ~40 sites. The rule that toggling a character or realm has to invalidate the account-sum cache — previously copy-pasted at three call sites — now lives inside the toggle itself, so it can't be forgotten, and the matching rule that a routine stat scrape must *not* invalidate it (that recompute is expensive enough to feel) is enforced in the same place.

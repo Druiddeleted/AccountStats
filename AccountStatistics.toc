@@ -1,8 +1,8 @@
-## Interface: 120005
+## Interface: 120100
 ## Title: Account Statistics
 ## Notes: Adds an Account tab to the Achievements window with statistics summed across every character on the account.
 ## Author: Druiddeleted
-## Version: 0.1.2-alpha1
+## Version: 0.1.2-alpha2
 ## SavedVariables: AccountStatisticsDB
 
 src\async.lua
